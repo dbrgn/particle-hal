@@ -1,10 +1,31 @@
 //! Low level bindings to the HAL
 
 use String;
-use cty::{c_char, c_int, c_ulong, c_uint, int32_t, uint16_t, uint32_t, uint8_t};
+use cty::{c_char, c_int, c_long, c_ulong, c_uint, int32_t, uint16_t, uint32_t, uint8_t};
 
 pub type pin_t = u16;
 pub type p_user_function_int_str_t = extern "C" fn(&String) -> c_int;
+
+/// Newtype for sock_handle_t
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SocketHandle(uint32_t);
+
+/// Newtype for network_interface_t
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct NetworkInterface(uint32_t);
+
+/// Newtype for a socket result.
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct SocketResult(int32_t);
+
+#[repr(C)]
+pub struct sockaddr_t {
+    pub sa_family: uint16_t,
+    pub sa_data: [uint8_t; 14],
+}
 
 #[repr(C)]
 pub struct spark_variable_t {
@@ -47,6 +68,23 @@ pub enum Spark_Data_TypeDef {
     CLOUD_VAR_INT = 2,
     CLOUD_VAR_STRING = 4,
     CLOUD_VAR_DOUBLE = 9,
+}
+
+#[repr(u8)]
+pub enum AddressFamily {
+    AF_INET = 2,
+}
+
+#[repr(u8)]
+pub enum SocketType {
+    SOCK_STREAM = 1,
+    SOCK_DGRAM = 2,
+}
+
+#[repr(u8)]
+pub enum Protocol {
+    IPPROTO_TCP = 6,
+    IPPROTO_UDP = 17,
 }
 
 extern "C" {
@@ -97,6 +135,40 @@ extern "C" {
     ) -> bool;
     /// `deviceID`
     pub fn spark_deviceID() -> String;
+
+    /// Determine if a given socket is bound.
+    /// Return non-zero if bound, 0 otherwise.
+    pub fn socket_active_status(handle: SocketHandle) -> u8;
+
+    /// Determine if the given socket handle is valid.
+    /// Return 1 if the socket is valid, 0 otherwise.
+    pub fn socket_handle_valid(handle: SocketHandle) -> u8;
+
+    /// Create a new socket handle.
+    pub fn socket_create(family: AddressFamily,
+                         type_: SocketType,
+                         protocol: Protocol,
+                         port: u16,
+                         network_interface: NetworkInterface)
+                         -> SocketHandle;
+
+    /// Connect the given socket to the address.
+    pub fn socket_connect(handle: SocketHandle, addr: sockaddr_t, addrlen: c_long) -> int32_t;
+
+    /// Close the socket handle.
+    pub fn socket_close(handle: SocketHandle) -> SocketResult;
+
+// DYNALIB_FN(4, hal_socket, socket_receive, sock_result_t(sock_handle_t, void*, socklen_t, system_tick_t))
+// DYNALIB_FN(5, hal_socket, socket_receivefrom, sock_result_t(sock_handle_t, void*, socklen_t, uint32_t, sockaddr_t*, socklen_t*))
+// DYNALIB_FN(6, hal_socket, socket_send, sock_result_t(sock_handle_t, const void*, socklen_t))
+// DYNALIB_FN(7, hal_socket, socket_sendto, sock_result_t(sock_handle_t, const void*, socklen_t, uint32_t, sockaddr_t*, socklen_t))
+// DYNALIB_FN(9, hal_socket, socket_reset_blocking_call, sock_result_t(void))
+// DYNALIB_FN(10, hal_socket, socket_create_tcp_server, sock_result_t(uint16_t, network_interface_t))
+// DYNALIB_FN(11, hal_socket, socket_accept, sock_result_t(sock_handle_t))
+// DYNALIB_FN(12, hal_socket, socket_handle_invalid, sock_handle_t(void))
+// DYNALIB_FN(13, hal_socket, socket_join_multicast, sock_result_t(const HAL_IPAddress*, network_interface_t, socket_multicast_info_t*))
+// DYNALIB_FN(14, hal_socket, socket_leave_multicast, sock_result_t(const HAL_IPAddress*, network_interface_t, socket_multicast_info_t*))
+// DYNALIB_FN(15, hal_socket, socket_peer, sock_result_t(sock_handle_t, sock_peer_t*, void*))
 }
 
 // TODO add bindings for all functions below, but be sure to know which

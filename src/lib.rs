@@ -12,6 +12,7 @@ use core::{ops, slice};
 
 pub mod cloud;
 pub mod ll;
+pub mod tcp_client;
 
 use cty::{c_char, c_uchar, c_uint};
 
